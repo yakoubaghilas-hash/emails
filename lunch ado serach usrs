@@ -1,0 +1,1 @@
+PS C:\code\tech 2026 - test&attach> .\get-adoGroupMembers-cli.ps1 -Organization "https://amayestech.visualstudio.com/" -Project "selfservicedemo" -GroupName "sdfsdfdf" -PAT "2XGe4m9bK5vA12661nBavpci4egnj0PZ3rcvsyxgTnJbqI9JQQJ99CGACAAAAAAAAAAAAASAZDO3rCS"
