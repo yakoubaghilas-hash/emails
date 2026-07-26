@@ -1,0 +1,2 @@
+cd "c:\code\tech 2026 - test&attach"
+.\compare-groups.ps1 -ADOGroupName "sdfsdfdf" -EntraGroupName "Developers" -PAT "YOUR_PAT"
