@@ -1,4 +1,4 @@
-# Script pour lister les utilisateurs d'un groupe Azure DevOps avec az devops CLI
+# Script to list users from an Azure DevOps group using az devops CLI
 
 param(
     [string]$Organization = "https://amayestech.visualstudio.com/",
@@ -7,14 +7,14 @@ param(
     [string]$PAT
 )
 
-# Demander le PAT s'il n'est pas fourni
+# Prompt for PAT if not provided
 if (-not $PAT) {
     $PAT = Read-Host -Prompt "Entrez votre Personal Access Token (PAT)" -AsSecureString
     $PAT = [System.Net.NetworkCredential]::new("", $PAT).Password
 }
 
 if (-not $PAT) {
-    Write-Host "PAT vide. Abandon." -ForegroundColor Red
+    Write-Host "Empty PAT. Aborting." -ForegroundColor Red
     exit 1
 }
 
@@ -24,40 +24,40 @@ Write-Host "Project: $Project"
 Write-Host "Group: $GroupName"
 Write-Host ""
 
-# Configurer l'authentification avec le PAT
+# Configure authentication with PAT
 $env:AZURE_DEVOPS_EXT_PAT = $PAT
 
-# Configuration de l'organisation et du projet
+# Configure organization and project
 $org = $Organization.TrimEnd('/')
 if ($org.Contains('/')) {
-    # Extraire le nom de l'organisation de l'URL
+    # Extract organization name from URL
     $org = ($org -split '/')[-1]
 }
 
-Write-Host "Etape 1: Configuration de l'organisation" -ForegroundColor Cyan
+Write-Host "Step 1: Configure organization" -ForegroundColor Cyan
 az devops configure --defaults organization=$Organization project=$Project 2>&1 | Out-Null
 
-# Etape 2: Lister les groupes
-Write-Host "`nEtape 2: Recherche des groupes..." -ForegroundColor Cyan
+# Step 2: List groups
+Write-Host "`nStep 2: Search for groups..." -ForegroundColor Cyan
 $groupsJson = az devops security group list --org $Organization --project $Project 2>&1
 
 $groups = $groupsJson | ConvertFrom-Json -ErrorAction SilentlyContinue
 
-# La réponse utilise "graphGroups" et non "value"
+# Response uses "graphGroups" not "value"
 $groupList = if ($groups.graphGroups) { $groups.graphGroups } elseif ($groups.value) { $groups.value } else { @() }
 
 if (-not $groupList -or $groupList.Count -eq 0) {
-    Write-Host "[ERREUR] Aucun groupe trouve" -ForegroundColor Red
+    Write-Host "[ERROR] No groups found" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Groupes disponibles:" -ForegroundColor Green
+Write-Host "Available groups:" -ForegroundColor Green
 $groupList | ForEach-Object {
     Write-Host "  - $($_.displayName)"
 }
 
-# Etape 3: Chercher le groupe specifique
-Write-Host "`nEtape 3: Recherche du groupe '$GroupName'..." -ForegroundColor Cyan
+# Step 3: Find specific group
+Write-Host "`nStep 3: Searching for group '$GroupName'..." -ForegroundColor Cyan
 $targetGroup = $groupList | Where-Object { 
     $_.displayName -like "*$GroupName*" -or 
     $_.displayName -eq $GroupName -or
@@ -65,21 +65,21 @@ $targetGroup = $groupList | Where-Object {
 }
 
 if (-not $targetGroup) {
-    Write-Host "[ERREUR] Groupe '$GroupName' non trouve" -ForegroundColor Red
-    Write-Host "Groupes disponibles:" -ForegroundColor Yellow
+    Write-Host "[ERROR] Group '$GroupName' not found" -ForegroundColor Red
+    Write-Host "Available groups:" -ForegroundColor Yellow
     $groupList | ForEach-Object {
         Write-Host "  $($_.displayName) ($($_.principalName))"
     }
     exit 1
 }
 
-Write-Host "[OK] Groupe trouve: $($targetGroup.displayName)" -ForegroundColor Green
+Write-Host "[OK] Group found: $($targetGroup.displayName)" -ForegroundColor Green
 $groupDescriptor = $targetGroup.descriptor
 
-# Etape 4: Lister les membres du groupe
-Write-Host "`nEtape 4: Recuperation des membres..." -ForegroundColor Cyan
+# Step 4: List group members
+Write-Host "`nStep 4: Retrieving members..." -ForegroundColor Cyan
 
-# Essayer avec la commande membership list
+# Retrieve members using membership list command
 $membersJson = az devops security group membership list `
     --id $groupDescriptor `
     --org $Organization `
@@ -87,8 +87,8 @@ $membersJson = az devops security group membership list `
 
 $members = $membersJson | ConvertFrom-Json -ErrorAction SilentlyContinue
 
-# La réponse est un objet avec les descripteurs comme clés, pas un tableau
-# On doit extraire les propriétés et filtrer les utilisateurs
+# Response is an object with descriptors as keys, not an array
+# Extract properties and filter for users
 $memberList = @()
 $members.PSObject.Properties | ForEach-Object {
     if ($_.Value.subjectKind -eq "user") {
@@ -97,18 +97,18 @@ $members.PSObject.Properties | ForEach-Object {
 }
 
 if ($memberList.Count -eq 0) {
-    Write-Host "[INFO] Aucun membre (utilisateur) trouve dans le groupe" -ForegroundColor Yellow
+    Write-Host "[INFO] No user members found in the group" -ForegroundColor Yellow
 }
 else {
-    Write-Host "[OK] $($memberList.Count) membre(s) trouve(s):`n" -ForegroundColor Green
+    Write-Host "[OK] $($memberList.Count) member(s) found:`n" -ForegroundColor Green
     
     $memberList | ForEach-Object {
         Write-Host "---"
-        Write-Host "Nom            : $($_.displayName)"
+        Write-Host "Name           : $($_.displayName)"
         Write-Host "Email          : $($_.mailAddress)"
         Write-Host "Principal Name : $($_.principalName)"
         Write-Host "ID             : $($_.descriptor)"
     }
 }
 
-Write-Host "`n=== Fin ===" -ForegroundColor Green
+Write-Host "`n=== Complete ===" -ForegroundColor Green
