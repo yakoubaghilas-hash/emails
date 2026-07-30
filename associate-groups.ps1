@@ -6,6 +6,18 @@ param(
     [string]$PAT
 )
 
+
+
+$entraId = (az ad group show --group "$EntraGroup" --query id -o tsv 2>&1)
+
+if (-not $entraId) { Write-Host "Entra group not found"; exit 1 }
+
+az devops security group membership add --group-id $ado.descriptor --member-id "aad://$entraId" --org $Org 2>&1
+
+Write-Host "Done: $($ado.displayName) <- $EntraGroup"
+
+
+
 Write-Host "`n=== Associer Groupe Entra ID à Groupe Azure DevOps ===" -ForegroundColor Cyan
 
 # Demander les paramètres manquants
